@@ -12,7 +12,7 @@ import {
 
 import { Svg, Rect } from "react-native-svg";
 
-const GAME_SIZE = 50;
+const GAME_SIZE = 25;
 const COUNTER_SIZE = 1;
 
 function initializeGame(): number[] {
@@ -33,11 +33,7 @@ function checkCellState(game: number[], i: number, j: number): number {
     convolution.forEach((jOffset) => {
       const adjacentCellPosition =
         ((i + iOffset) % GAME_SIZE) * GAME_SIZE + ((j + jOffset) % GAME_SIZE);
-      if (
-        adjacentCellPosition != cellPosition &&
-        adjacentCellPosition > 0 &&
-        adjacentCellPosition < GAME_SIZE * GAME_SIZE
-      ) {
+      if (adjacentCellPosition != cellPosition) {
         const adjacentCell = game[adjacentCellPosition];
         if (adjacentCell > 0) {
           lifeCount += 1;
@@ -60,47 +56,86 @@ function checkCellState(game: number[], i: number, j: number): number {
   return 0;
 }
 
-function createGrid(game: number[]): JSX.Element[] {
+interface CellProps {
+  x: number;
+  y: number;
+}
+
+function CreateCell({ x, y }: CellProps): JSX.Element {
+  return (
+    <Rect
+      x={x.toString()}
+      y={y.toString()}
+      width={COUNTER_SIZE.toString()}
+      height={COUNTER_SIZE.toString()}
+      fill="white"
+    />
+  );
+}
+
+interface GameGridProps {
+  game: number[];
+}
+
+function GameGrid({ game }: GameGridProps): JSX.Element {
   const grid = [];
 
   for (let i = 0; i < GAME_SIZE; i++) {
     for (let j = 0; j < GAME_SIZE; j++) {
       if (game[i * GAME_SIZE + j] == 1) {
         grid.push(
-          <Rect
-            x={(i * COUNTER_SIZE).toString()}
-            y={(j * COUNTER_SIZE).toString()}
-            width={COUNTER_SIZE.toString()}
-            height={COUNTER_SIZE.toString()}
-            fill="white"
-            key={i * GAME_SIZE + j}
+          <CreateCell
+            x={i * COUNTER_SIZE}
+            y={j * COUNTER_SIZE}
+            key={(i * GAME_SIZE + j).toString()}
           />
         );
       }
     }
   }
-  return grid;
+
+  return (
+    <Svg
+      width="100%"
+      height="100%"
+      viewBox={
+        "0 0 " +
+        (GAME_SIZE * COUNTER_SIZE).toString() +
+        " " +
+        (GAME_SIZE * COUNTER_SIZE).toString()
+      }
+    >
+      {grid}
+    </Svg>
+  );
+}
+
+function updateGame(game: number[]): number[] {
+  const nextGameState = [];
+  for (let i = 0; i < GAME_SIZE; i++) {
+    for (let j = 0; j < GAME_SIZE; j++) {
+      const newCellState = checkCellState(game, i, j);
+      nextGameState.push(newCellState);
+    }
+  }
+  return nextGameState;
 }
 
 let game = initializeGame();
-let grid = createGrid(game);
+let grid = <GameGrid game={game} />;
 
 export default function App(): JSX.Element {
   const [step, setStep] = useState(false);
 
   useLayoutEffect(() => {
-    setTimeout(() => {
+    const id = setTimeout(() => {
       setStep(!step);
     }, 333);
-    const nextGameState = [];
-    for (let i = 0; i < GAME_SIZE; i++) {
-      for (let j = 0; j < GAME_SIZE; j++) {
-        const newCellState = checkCellState(game, i, j);
-        nextGameState.push(newCellState);
-      }
-    }
-    game = nextGameState;
-    grid = createGrid(game);
+
+    game = updateGame(game);
+    grid = <GameGrid game={game} />;
+
+    return () => clearInterval(id);
   });
 
   return (
@@ -110,26 +145,13 @@ export default function App(): JSX.Element {
         <Text style={styles.titleText}>Conway&apos;s Game of Life</Text>
       </View>
       <View style={styles.game}>
-        <View style={StyleSheet.absoluteFill}>
-          <Svg
-            width="100%"
-            height="100%"
-            viewBox={
-              "0 0 " +
-              (GAME_SIZE * COUNTER_SIZE).toString() +
-              " " +
-              (GAME_SIZE * COUNTER_SIZE).toString()
-            }
-          >
-            {grid}
-          </Svg>
-        </View>
+        <View style={StyleSheet.absoluteFill}>{grid}</View>
       </View>
       <Pressable
         style={styles.button}
         onPress={() => {
           game = initializeGame();
-          grid = createGrid(game);
+          grid = <GameGrid game={game} />;
         }}
       >
         <Text style={styles.buttonText}>Reset</Text>
@@ -147,8 +169,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   game: {
-    alignItems: "center",
-    justifyContent: "center",
     flex: 1,
     flexGrow: 3,
     minWidth: "95%",
@@ -185,6 +205,6 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: "10%",
   },
 });
